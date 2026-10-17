@@ -9,6 +9,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Fixed
+- **Raw `create_with_completion`**: Return the raw SDK object in both tuple slots when `response_model=None` instead of raising `AttributeError` on the missing `_raw_response` attribute, honoring the declared `tuple[Any, Any]` sync/async contract across modes. Parsed completions still return the validated model paired with the raw completion.
+
 ## [1.18.0] - 2026-09-26
 
 ### Added

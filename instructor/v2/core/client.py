@@ -734,7 +734,10 @@ class Instructor:
             hooks=combined_hooks,
             **kwargs,
         )
-        return model, model._raw_response
+        # `response_model=None` returns the raw SDK object unchanged, which has no
+        # `_raw_response`; fall back to the object itself so raw CWC returns the raw
+        # completion in both tuple slots instead of raising AttributeError.
+        return model, getattr(model, "_raw_response", model)
 
     def handle_kwargs(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """
@@ -934,7 +937,10 @@ class AsyncInstructor(Instructor):
             hooks=combined_hooks,
             **kwargs,
         )
-        return response, response._raw_response
+        # `response_model=None` returns the raw SDK object unchanged, which has no
+        # `_raw_response`; fall back to the object itself so raw CWC returns the raw
+        # completion in both tuple slots instead of raising AttributeError.
+        return response, getattr(response, "_raw_response", response)
 
 
 @overload

@@ -415,6 +415,43 @@ async def test_async_response_facade_normalizes_input_and_forwards_each_helper()
     assert all(call["model"] == "offline-model" for call in received)
 
 
+def test_create_with_completion_raw_returns_raw_in_both_slots() -> None:
+    """response_model=None returns the raw object; CWC must not read `_raw_response`."""
+    raw = object()
+
+    def create(**kwargs: Any) -> Any:
+        assert kwargs["response_model"] is None
+        return raw
+
+    client = Instructor(client=None, create=create, model="offline-model")
+    model, completion = (
+        client.create_with_completion(  # ty: ignore[no-matching-overload] - raw response_model=None
+            messages=MESSAGES, response_model=None, max_retries=1
+        )
+    )
+    assert model is raw
+    assert completion is raw
+
+
+@pytest.mark.asyncio
+async def test_create_with_completion_raw_async_returns_raw_in_both_slots() -> None:
+    """Async twin: raw CWC returns the raw object in both tuple slots."""
+    raw = object()
+
+    async def create(**kwargs: Any) -> Any:
+        assert kwargs["response_model"] is None
+        return raw
+
+    client = AsyncInstructor(client=None, create=create, model="offline-model")
+    model, completion = await client.create_with_completion(
+        messages=MESSAGES,
+        response_model=None,  # ty: ignore[invalid-argument-type] - raw response_model=None
+        max_retries=1,
+    )
+    assert model is raw
+    assert completion is raw
+
+
 def test_client_hook_helpers_register_remove_and_clear_handlers() -> None:
     events: list[str] = []
 
