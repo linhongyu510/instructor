@@ -368,3 +368,119 @@ async def test_async_completed_responses_keep_defaults_and_cache(
     for result in results:
         assert isinstance(result, Answer)
         assert result.model_dump() == {"value": 42, "label": "default-label"}
+
+
+def test_sync_raw_create_with_completion_returns_raw_in_both_slots(
+    responses_endpoint,
+) -> None:
+    """response_model=None: raw CWC returns the raw SDK object in both slots."""
+    url, calls = responses_endpoint
+    with openai.OpenAI(
+        api_key="local-only",
+        base_url=url,
+        max_retries=0,
+        http_client=httpx.Client(trust_env=False),
+    ) as sdk:
+        client = instructor.from_openai(sdk, mode=Mode.RESPONSES_TOOLS)
+        model, completion = client.responses.create_with_completion(
+            model="local-contract",
+            messages=[{"role": "user", "content": "answer"}],
+            response_model=None,
+            max_retries=1,
+        )
+    assert isinstance(model, Response)
+    assert isinstance(completion, Response)
+    assert model is completion
+    assert model.id == "resp_local"
+    assert len(calls) == 1
+    assert calls[0]["path"] == "/v1/responses"
+
+
+@pytest.mark.asyncio
+async def test_async_raw_create_with_completion_returns_raw_in_both_slots(
+    responses_endpoint,
+) -> None:
+    url, calls = responses_endpoint
+    async with openai.AsyncOpenAI(
+        api_key="local-only",
+        base_url=url,
+        max_retries=0,
+        http_client=httpx.AsyncClient(trust_env=False),
+    ) as sdk:
+        client = instructor.from_openai(sdk, mode=Mode.RESPONSES_TOOLS)
+        assert isinstance(client, AsyncInstructor)
+        pending = client.responses.create_with_completion(
+            model="local-contract",
+            messages=[{"role": "user", "content": "answer"}],
+            response_model=None,
+            max_retries=1,
+        )
+        assert isawaitable(pending)
+        (
+            model,
+            completion,
+        ) = await pending  # ty: ignore[not-iterable] - raw CWC tuple[Any,Any]
+    assert isinstance(model, Response)
+    assert isinstance(completion, Response)
+    assert model is completion
+    assert model.id == "resp_local"
+    assert len(calls) == 1
+    assert calls[0]["path"] == "/v1/responses"
+
+
+def test_sync_parsed_create_with_completion_returns_model_and_raw(
+    responses_endpoint,
+) -> None:
+    """Parsed CWC still returns the validated model paired with the raw completion."""
+    url, calls = responses_endpoint
+    with openai.OpenAI(
+        api_key="local-only",
+        base_url=url,
+        max_retries=0,
+        http_client=httpx.Client(trust_env=False),
+    ) as sdk:
+        client = instructor.from_openai(sdk, mode=Mode.RESPONSES_TOOLS)
+        model, completion = client.responses.create_with_completion(
+            model="local-contract",
+            messages=[{"role": "user", "content": "answer"}],
+            response_model=Answer,
+            max_retries=1,
+        )
+    assert isinstance(model, Answer)
+    assert model.value == 42
+    assert isinstance(completion, Response)
+    assert completion.id == "resp_local"
+    assert len(calls) == 1
+    assert calls[0]["path"] == "/v1/responses"
+
+
+@pytest.mark.asyncio
+async def test_async_parsed_create_with_completion_returns_model_and_raw(
+    responses_endpoint,
+) -> None:
+    url, calls = responses_endpoint
+    async with openai.AsyncOpenAI(
+        api_key="local-only",
+        base_url=url,
+        max_retries=0,
+        http_client=httpx.AsyncClient(trust_env=False),
+    ) as sdk:
+        client = instructor.from_openai(sdk, mode=Mode.RESPONSES_TOOLS)
+        assert isinstance(client, AsyncInstructor)
+        pending = client.responses.create_with_completion(
+            model="local-contract",
+            messages=[{"role": "user", "content": "answer"}],
+            response_model=Answer,
+            max_retries=1,
+        )
+        assert isawaitable(pending)
+        result = await pending
+        model, completion = (
+            result  # ty: ignore[not-iterable] - parsed CWC tuple[Answer, Response]
+        )
+    assert isinstance(model, Answer)
+    assert model.value == 42
+    assert isinstance(completion, Response)
+    assert completion.id == "resp_local"
+    assert len(calls) == 1
+    assert calls[0]["path"] == "/v1/responses"
